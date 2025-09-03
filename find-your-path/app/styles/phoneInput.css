@@ -1,0 +1,35 @@
+/* phoneInput.css */
+.react-tel-input {
+  width: 100%;
+}
+
+.react-tel-input .form-control {
+  width: 100% !important;
+  height: 50px !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  font-size: 16px !important;
+  padding-left: 48px !important; /* space for flag */
+}
+
+.react-tel-input .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.react-tel-input .flag-dropdown {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: none !important;
+  border-radius: 12px 0 0 12px !important;
+}
+
+.react-tel-input .selected-flag {
+  background: transparent !important;
+}
+
+.react-tel-input .country-list {
+  background: #1e293b !important; /* Tailwind slate-800 */
+  color: #fff !important;
+  border-radius: 8px !important;
+}
