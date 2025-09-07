@@ -1,10 +1,13 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
+import { auth, db } from "../../lib/firebase";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
-// 60 Questions (same as before, shortened here for clarity)
+// ✅ Your 60 questions (kept as is)
 const questions = {
   R: [
     "Do you enjoy fixing or repairing broken items?",
@@ -90,6 +93,7 @@ const careerSuggestions = {
 };
 
 export default function QuestionBankPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const name = searchParams.get("name") || "User";
 
@@ -97,39 +101,92 @@ export default function QuestionBankPage() {
     qList.map((q, index) => ({ category, text: q, id: `${category}-${index}` }))
   );
 
-  const [answers, setAnswers] = useState({});
-  const [submitted, setSubmitted] = useState(false);
-  const [page, setPage] = useState(0);
-
   const totalQuestions = allQuestions.length;
   const questionsPerPage = 10;
-  const start = page * questionsPerPage;
-  const currentQuestions = allQuestions.slice(start, start + questionsPerPage);
 
-  const handleAnswer = (id, value) => {
-    setAnswers((prev) => ({ ...prev, [id]: value }));
-  };
+  const [user, setUser] = useState(null);
+  const [answers, setAnswers] = useState({});
+  const [page, setPage] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const calculateResults = () => {
-    const scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
-    Object.entries(answers).forEach(([key, value]) => {
-      const [category] = key.split("-");
-      if (value === "yes") scores[category] += 1;
-      if (value === "neutral") scores[category] += 0.5;
+  // ✅ Auth listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        router.push("/login");
+        return;
+      }
+
+      setUser(currentUser);
+
+      // Fetch saved progress
+      const ref = doc(db, "users", currentUser.phoneNumber);
+      const snap = await getDoc(ref);
+
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.submitted) {
+          router.push("/results");
+          return;
+        }
+        setAnswers(data.answers || {});
+        setPage(data.page || 0);
+        setSubmitted(data.submitted || false);
+      }
+      setLoading(false);
     });
-    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-    return sorted.slice(0, 2).map(([cat]) => cat);
+
+    return () => unsubscribe();
+  }, [router]);
+
+  // ✅ Save progress to Firestore
+  const saveProgress = async (newAnswers, newPage) => {
+    if (!user) return;
+    const ref = doc(db, "users", user.phoneNumber);
+
+    await setDoc(
+      ref,
+      {
+        answers: newAnswers,
+        page: newPage,
+        submitted: false,
+      },
+      { merge: true }
+    );
   };
 
-  const handleSubmit = () => {
+  const handleAnswer = async (id, value) => {
+    const newAnswers = { ...answers, [id]: value };
+    setAnswers(newAnswers);
+    await saveProgress(newAnswers, page);
+  };
+
+  const handleSubmit = async () => {
     if (Object.keys(answers).length < totalQuestions) {
       alert("⚠️ Please answer all questions before submitting.");
       return;
     }
     setSubmitted(true);
+
+    await updateDoc(doc(db, "users", user.phoneNumber), {
+      answers,
+      submitted: true,
+    });
+
+    router.push("/results");
   };
 
-  const topTwo = submitted ? calculateResults() : [];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-black text-white">
+        Loading your progress...
+      </div>
+    );
+  }
+
+  const start = page * questionsPerPage;
+  const currentQuestions = allQuestions.slice(start, start + questionsPerPage);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-black to-gray-900 text-white flex flex-col">
@@ -198,7 +255,10 @@ export default function QuestionBankPage() {
               </button>
               {page < Math.ceil(totalQuestions / questionsPerPage) - 1 ? (
                 <button
-                  onClick={() => setPage((p) => p + 1)}
+                  onClick={() => {
+                    setPage((p) => p + 1);
+                    saveProgress(answers, page + 1);
+                  }}
                   className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg"
                 >
                   Next ➡
@@ -214,23 +274,7 @@ export default function QuestionBankPage() {
             </div>
           </motion.div>
         </main>
-      ) : (
-        <main className="flex-1 flex justify-center items-center">
-          <motion.div
-            className="text-center p-8 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <h2 className="text-2xl font-bold mb-4">🎉 Thank you, {name}!</h2>
-            <p className="mb-6">Your top career interests are:</p>
-            {topTwo.map((cat) => (
-              <p key={cat} className="mb-2">
-                {cat} → {careerSuggestions[cat].join(", ")}
-              </p>
-            ))}
-          </motion.div>
-        </main>
-      )}
+      ) : null}
     </div>
   );
 }
