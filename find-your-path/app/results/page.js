@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-
 import { auth, db } from "../../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -30,10 +29,10 @@ export default function ResultsPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [scores, setScores] = useState(null);
+  const [answers, setAnswers] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("results");
+  const [view, setView] = useState("results"); // results | answers
 
-  // Load user & answers
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
@@ -47,17 +46,15 @@ export default function ResultsPage() {
         const snap = await getDoc(ref);
 
         if (!snap.exists() || !snap.data().submitted) {
-          setScores(null);
-          setLoading(false);
+          router.push("/question-bank");
           return;
         }
 
         const data = snap.data();
-        const answers = data.answers || {};
+        const userAnswers = data.answers || {};
 
-        // Compute RIASEC scores
         const cats = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
-        Object.entries(answers).forEach(([key, value]) => {
+        Object.entries(userAnswers).forEach(([key, value]) => {
           const [cat] = key.split("-");
           if (!cats.hasOwnProperty(cat)) return;
           if (value === "yes") cats[cat] += 1;
@@ -65,10 +62,11 @@ export default function ResultsPage() {
         });
 
         setScores(cats);
+        setAnswers(userAnswers);
         setLoading(false);
       } catch (err) {
         console.error("Failed fetching results:", err);
-        setLoading(false);
+        router.push("/question-bank");
       }
     });
 
@@ -78,112 +76,132 @@ export default function ResultsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black text-white">
-        Loading...
+        Loading results...
       </div>
     );
   }
 
-  // sorted top two
-  const sorted = scores
-    ? Object.entries(scores).sort((a, b) => b[1] - a[1])
-    : [];
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const topTwo = sorted.slice(0, 2);
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-black to-indigo-900 text-white">
       {/* Sidebar */}
-      <aside className="w-64 bg-black/40 backdrop-blur-lg border-r border-white/10 p-6 flex flex-col">
-        <h2 className="text-xl font-bold mb-8">📊 Dashboard</h2>
+      <aside className="w-64 bg-black/40 backdrop-blur-xl border-r border-white/20 p-6 flex flex-col">
+        <h2 className="text-2xl font-bold mb-6">📊 Dashboard</h2>
         <button
-          onClick={() => setActiveTab("results")}
-          disabled={!scores}
-          className={`mb-4 px-4 py-2 rounded-lg text-left transition-all ${
-            activeTab === "results"
-              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-              : "bg-white/10 hover:bg-white/20 text-gray-300"
-          } ${!scores ? "opacity-40 cursor-not-allowed" : ""}`}
+          onClick={() => setView("results")}
+          className={`text-left mb-4 px-4 py-2 rounded-lg ${
+            view === "results"
+              ? "bg-purple-600 text-white"
+              : "bg-white/10 hover:bg-white/20"
+          }`}
         >
           Results
         </button>
         <button
-          onClick={() => router.push("/question-bank")}
-          className="px-4 py-2 rounded-lg text-left bg-white/10 hover:bg-white/20 text-gray-300 transition-all"
+          onClick={() => setView("answers")}
+          className={`text-left px-4 py-2 rounded-lg ${
+            view === "answers"
+              ? "bg-purple-600 text-white"
+              : "bg-white/10 hover:bg-white/20"
+          }`}
         >
-          Retake Test
+          How You Answered
         </button>
       </aside>
 
-      {/* Main content */}
+      {/* Main Content */}
       <main className="flex-1 p-10 overflow-y-auto">
-        {activeTab === "results" && scores ? (
+        {view === "results" && (
           <motion.div
-            className="max-w-4xl mx-auto bg-white/10 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-white/20"
+            className="max-w-3xl mx-auto bg-white/10 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-white/20"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            {/* Header */}
-            <div className="flex justify-between items-center border-b border-white/20 pb-4 mb-6">
-              <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-500">
-                Career Interest Report
-              </h1>
-              <div className="text-right text-sm text-gray-300">
-                <p>👤 {user?.displayName || user?.phoneNumber}</p>
-                <p>{new Date().toLocaleDateString()}</p>
-              </div>
-            </div>
+            <h1 className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-500">
+              Hello, {user?.displayName || user?.phoneNumber}
+            </h1>
+            <p className="mb-8 text-gray-300">
+              Here’s a summary of your career interest results based on the
+              Holland RIASEC model.
+            </p>
 
             {/* Scores */}
-            <section className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">Category Scores</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {Object.entries(scores).map(([cat, score]) => (
-                  <div key={cat} className="text-left">
-                    <p className="font-medium mb-2">
-                      {categoryNames[cat]} ({cat})
-                    </p>
-                    <div className="w-full bg-white/20 rounded-full h-5 overflow-hidden">
-                      <motion.div
-                        className="h-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
-                        style={{ width: `${(score / 10) * 100}%` }}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(score / 10) * 100}%` }}
-                        transition={{ duration: 1 }}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-400 mt-1">{score} / 10</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Top Careers */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4">Top Career Matches</h2>
-              {topTwo.map(([cat]) => (
-                <div
-                  key={cat}
-                  className="mb-4 p-4 rounded-xl bg-white/5 border border-white/20"
-                >
-                  <h3 className="text-lg font-semibold mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+              {Object.entries(scores).map(([cat, score]) => (
+                <div key={cat}>
+                  <p className="font-medium mb-2">
                     {categoryNames[cat]} ({cat})
-                  </h3>
-                  <p className="text-gray-300">
-                    Suggested careers:{" "}
-                    <span className="text-white font-medium">
-                      {careerSuggestions[cat].join(", ")}
-                    </span>
                   </p>
+                  <div className="w-full bg-white/20 rounded-full h-5 overflow-hidden">
+                    <motion.div
+                      className="h-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+                      style={{ width: `${(score / 10) * 100}%` }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(score / 10) * 100}%` }}
+                      transition={{ duration: 1 }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">{score} / 10</p>
                 </div>
               ))}
-            </section>
+            </div>
+
+            {/* Top matches */}
+            <h2 className="text-2xl font-semibold mb-4">Your Top Matches</h2>
+            {topTwo.map(([cat]) => (
+              <div
+                key={cat}
+                className="mb-4 p-4 rounded-xl bg-white/5 border border-white/20"
+              >
+                <h3 className="text-lg font-semibold mb-2">
+                  {categoryNames[cat]} ({cat})
+                </h3>
+                <p className="text-gray-300">
+                  Suggested careers:{" "}
+                  <span className="text-white font-medium">
+                    {careerSuggestions[cat].join(", ")}
+                  </span>
+                </p>
+              </div>
+            ))}
+
+            {/* Next Button */}
+            <div className="flex justify-end mt-8">
+              <motion.button
+                onClick={() => router.push("/career-options")}
+                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg font-bold text-lg hover:opacity-90 shadow-xl"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Next ➡
+              </motion.button>
+            </div>
           </motion.div>
-        ) : (
-          <div className="text-center text-gray-400">
-            {scores
-              ? "Select an option from the sidebar."
-              : "No results found. Please take the test first."}
-          </div>
+        )}
+
+        {view === "answers" && (
+          <motion.div
+            className="max-w-3xl mx-auto bg-white/10 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-white/20"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="text-2xl font-bold mb-6">How You Answered</h2>
+            <ul className="space-y-4">
+              {Object.entries(answers).map(([qId, ans]) => (
+                <li
+                  key={qId}
+                  className="p-4 rounded-lg bg-white/5 border border-white/20"
+                >
+                  <p className="font-medium">{qId}</p>
+                  <p className="text-gray-300">Answer: {ans}</p>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
         )}
       </main>
     </div>
