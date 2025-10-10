@@ -1,20 +1,35 @@
-"use client"; // ✅ Must be the very first line
+"use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { auth, db } from "../../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import DailySkillTracker from "../components/DailySkillTracker";
+
+// Motivational Quotes Data
+const motivationalQuotes = [
+  "Success is not final, failure is not fatal: It is the courage to continue that counts. – Winston Churchill",
+  "Don’t watch the clock; do what it does. Keep going. – Sam Levenson",
+  "The secret of getting ahead is getting started. – Mark Twain",
+  "It always seems impossible until it’s done. – Nelson Mandela",
+  "Hardships often prepare ordinary people for an extraordinary destiny. – C.S. Lewis",
+  "Do one thing every day that scares you. – Eleanor Roosevelt",
+  "Opportunities don't happen, you create them. – Chris Grosser",
+  "Act as if what you do makes a difference. It does. – William James",
+  "Dream big and dare to fail. – Norman Vaughan",
+  "The way to get started is to quit talking and begin doing. – Walt Disney",
+];
 
 export default function LearningPathPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const careerParam = searchParams.get("career");
   const [career, setCareer] = useState(careerParam);
   const [resources, setResources] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState({}); // ✅ Track completed items
-const chosenSkill = "communication"; 
+  const [progress, setProgress] = useState({});
+  const [quote, setQuote] = useState("");
+
   // Fetch chosen career from Firebase if not in URL
   useEffect(() => {
     const fetchCareer = async () => {
@@ -23,24 +38,27 @@ const chosenSkill = "communication";
         if (!user) return;
         const ref = doc(db, "users", user.phoneNumber);
         const snap = await getDoc(ref);
-        if (snap.exists()) {
-          setCareer(snap.data().chosenCareer);
-        }
+        if (snap.exists()) setCareer(snap.data().chosenCareer);
       }
     };
     fetchCareer();
   }, [career]);
 
+  // Pick a random motivational quote
+  useEffect(() => {
+    const randomQuote =
+      motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+    setQuote(randomQuote);
+  }, []);
+
   // Load progress from localStorage
   useEffect(() => {
     if (!career) return;
-    const saved = localStorage.getItem(`progress-${career}`);
-    if (saved) {
-      setProgress(JSON.parse(saved));
-    }
+    const savedProgress = localStorage.getItem(`progress-${career}`);
+    if (savedProgress) setProgress(JSON.parse(savedProgress));
   }, [career]);
 
-  // Save progress to localStorage
+  // Save progress
   useEffect(() => {
     if (career) {
       localStorage.setItem(`progress-${career}`, JSON.stringify(progress));
@@ -50,7 +68,6 @@ const chosenSkill = "communication";
   // Fetch resources from API
   useEffect(() => {
     if (!career) return;
-
     const fetchResources = async () => {
       try {
         const res = await fetch(
@@ -59,52 +76,60 @@ const chosenSkill = "communication";
         const data = await res.json();
         setResources(data);
       } catch (err) {
-        console.error("Failed to fetch resources:", err);
+        console.error(err);
         setResources(null);
       } finally {
         setLoading(false);
       }
     };
-
     fetchResources();
   }, [career]);
 
-  if (!career) {
+  if (!career)
     return (
       <div className="flex items-center justify-center min-h-screen text-white">
         Please choose a career first.
       </div>
     );
-  }
-
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen text-white">
         Loading resources for {career}...
       </div>
     );
-  }
-
-  if (!resources) {
+  if (!resources)
     return (
       <div className="flex items-center justify-center min-h-screen text-white">
         No resources found for {career}.
       </div>
     );
-  }
 
-  // ✅ Handle toggle of completed items
+  // Toggle completed items
   const toggleComplete = (section, idx) => {
     setProgress((prev) => {
       const sectionProgress = prev[section] || [];
       const newProgress = sectionProgress.includes(idx)
-        ? sectionProgress.filter((i) => i !== idx) // remove if already completed
-        : [...sectionProgress, idx]; // add if not completed
+        ? sectionProgress.filter((i) => i !== idx)
+        : [...sectionProgress, idx];
       return { ...prev, [section]: newProgress };
     });
   };
 
-  // Render section with modern card UI + progress bar
+  // Check if all resources are completed
+  const allCompleted = Object.keys(resources).every((key) => {
+    const total = resources[key]?.length || 0;
+    const done = progress[key]?.length || 0;
+    return total === done;
+  });
+
+  // Proceed to Soft Skills page
+  const handleProceed = () => {
+    if (allCompleted) {
+      router.push(`/soft-skills?career=${encodeURIComponent(career)}`);
+    }
+  };
+
+  // Render resources section
   const renderSection = (title, key, items, getLink, getSubtitle) => {
     const completedCount = progress[key]?.length || 0;
     const totalCount = items?.length || 0;
@@ -117,8 +142,6 @@ const chosenSkill = "communication";
         <h2 className="text-2xl font-bold mb-2 border-b-2 border-purple-500 pb-2">
           {title}
         </h2>
-
-        {/* ✅ Progress Bar */}
         {totalCount > 0 && (
           <div className="w-full bg-gray-700 rounded-full h-3 mb-6">
             <div
@@ -127,7 +150,6 @@ const chosenSkill = "communication";
             ></div>
           </div>
         )}
-
         {items && items.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {items.map((item, idx) => {
@@ -157,15 +179,13 @@ const chosenSkill = "communication";
                       </p>
                     )}
                   </a>
-                  {/* ✅ Checkbox to mark as complete */}
                   <label className="mt-4 flex items-center space-x-2 cursor-pointer">
-                   <input
-  type="checkbox"
-  checked={!!isCompleted}   // ✅ always true/false
-  onChange={() => toggleComplete(key, idx)}
-  className="w-4 h-4 accent-purple-500"
-/>
-
+                    <input
+                      type="checkbox"
+                      checked={!!isCompleted}
+                      onChange={() => toggleComplete(key, idx)}
+                      className="w-4 h-4 accent-purple-500"
+                    />
                     <span className="text-xs text-gray-300">
                       {isCompleted ? "Completed" : "Mark as Complete"}
                     </span>
@@ -187,6 +207,14 @@ const chosenSkill = "communication";
         🚀 Personalized Learning Path for {career}
       </h1>
 
+      {/* ✅ Motivational Quote Card */}
+      {quote && (
+        <div className="mb-10 p-6 bg-gradient-to-r from-purple-700 to-pink-600 rounded-2xl shadow-xl text-center">
+          <span className="text-white italic font-medium">“{quote}”</span>
+        </div>
+      )}
+
+      {/* Render all resource sections */}
       {renderSection(
         "Audiobooks",
         "audiobooks",
@@ -201,11 +229,35 @@ const chosenSkill = "communication";
         (v) => v.url,
         (v) => `Channel: ${v.channel || "Unknown"}`
       )}
-      {renderSection("Courses", "courses", resources.courses, (c) => c.link, (c) => c.provider)}
-      {renderSection("Articles", "articles", resources.articles, (a) => a.link, (a) => a.source)}
-      <div className="mt-12">
-      <DailySkillTracker chosenSkill={career} />
-    </div>
+      {renderSection(
+        "Courses",
+        "courses",
+        resources.courses,
+        (c) => c.link,
+        (c) => c.provider
+      )}
+      {renderSection(
+        "Articles",
+        "articles",
+        resources.articles,
+        (a) => a.link,
+        (a) => a.source
+      )}
+
+      {/* ✅ Proceed Button */}
+      <div className="flex justify-end mt-12">
+        <button
+          onClick={handleProceed}
+          disabled={!allCompleted}
+          className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
+            allCompleted
+              ? "bg-purple-500 hover:bg-purple-600 text-white shadow-lg"
+              : "bg-gray-700 text-gray-400 cursor-not-allowed"
+          }`}
+        >
+          Proceed to Soft Skills
+        </button>
+      </div>
     </div>
   );
 }

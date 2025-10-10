@@ -1,65 +1,63 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
-// Sample practical tasks per career
-const sampleTasks = {
-  Entrepreneur: [
-    "Talk to a stranger today",
-    "Start a small side project",
-    "Write a short plan for a business idea",
-    "Record a 1-minute video about your goal",
-    "Learn one new skill online",
-  ],
-  "Software Developer": [
-    "Solve one coding problem",
-    "Watch a tutorial on React",
-    "Build a small component",
-    "Read one programming article",
-    "Write a function from scratch",
-  ],
-  "Teacher": [
-    "Teach a small concept to someone",
-    "Prepare a 5-min lesson plan",
-    "Observe a teaching video online",
-    "Write a reflection on communication",
-    "Give feedback to a peer",
-  ],
-  // Add more careers as needed
-};
-
-export default function DailySkillTracker({ chosenSkill }) {
+export default function DailySoftSkills({ career }) {
   const [tasks, setTasks] = useState([]);
+  const [completed, setCompleted] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!chosenSkill || !sampleTasks[chosenSkill]) return;
+    if (!career) return;
 
-    const randomTasks = [...sampleTasks[chosenSkill]]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 3);
+    const fetchTasks = async () => {
+      try {
+        const res = await fetch(`/api/softskills?career=${career}`);
+        const data = await res.json();
+        setTasks([...data.genericTasks, ...data.careerTasks]);
+      } catch (err) {
+        console.error("Failed to fetch soft skills tasks:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setTasks(randomTasks);
-  }, [chosenSkill]);
+    fetchTasks();
+  }, [career]);
 
-  if (!tasks.length) return null;
+  const toggleComplete = (idx) => {
+    setCompleted((prev) =>
+      prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
+    );
+  };
+
+  if (loading) return <p className="text-gray-400">Loading soft skills...</p>;
+  if (!tasks.length) return <p className="text-gray-400">No tasks defined for this career.</p>;
 
   return (
-    <div className="mb-10 p-6 bg-gradient-to-r from-purple-700 to-pink-600 rounded-2xl shadow-xl">
+    <div className="p-6 bg-gradient-to-r from-purple-700 to-pink-600 rounded-2xl shadow-xl mb-10">
       <h2 className="text-2xl font-bold mb-4 text-white">
-        🔥 Your Daily Practical Tasks
+        🌟 Daily Soft Skills Tasks for {career}
       </h2>
       <ul className="space-y-3">
         {tasks.map((task, idx) => (
           <motion.li
             key={idx}
-            className="p-3 bg-white/10 rounded-lg shadow hover:bg-white/20 transition text-white"
+            className={`p-3 rounded-lg shadow cursor-pointer transition ${
+              completed.includes(idx)
+                ? "bg-green-700/70 text-white line-through"
+                : "bg-white/10 text-white hover:bg-white/20"
+            }`}
+            onClick={() => toggleComplete(idx)}
             whileHover={{ scale: 1.03 }}
           >
             {task}
           </motion.li>
         ))}
       </ul>
+      <p className="mt-4 text-sm text-gray-300">
+        {completed.length} of {tasks.length} tasks completed
+      </p>
     </div>
   );
 }

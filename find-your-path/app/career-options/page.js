@@ -67,6 +67,12 @@ export default function CareerOptionsPage() {
   const [topTwo, setTopTwo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState("");
+const [name, setName] = useState("");
+
+useEffect(() => {
+  const storedName = localStorage.getItem("studentName") || "Student";
+  setName(storedName);
+}, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
@@ -81,6 +87,7 @@ export default function CareerOptionsPage() {
         const snap = await getDoc(ref);
 
         if (!snap.exists() || !snap.data().submitted) {
+           
           router.push("/question-bank");
           return;
         }
@@ -109,22 +116,29 @@ export default function CareerOptionsPage() {
     return () => unsub();
   }, [router]);
 
-  const handleConfirm = async () => {
-    if (!selected) {
-      alert("⚠️ Please select a career option first.");
-      return;
+ const handleConfirm = async () => {
+  if (!selected) {
+    alert("⚠️ Please select a career option first.");
+    return;
+  }
+
+  try {
+    const ref = doc(db, "users", user.phoneNumber);
+    await updateDoc(ref, { chosenCareer: selected });
+
+    // ✅ Save to localStorage so other pages can read it
+    if (typeof window !== "undefined") {
+      localStorage.setItem("career", selected);
     }
 
-    try {
-      const ref = doc(db, "users", user.phoneNumber);
-      await updateDoc(ref, { chosenCareer: selected });
-      alert(`✅ You selected: ${selected}`);
-      router.push("/learning-path"); // redirect to learning path
-    } catch (err) {
-      console.error("Error saving career choice:", err);
-      alert("❌ Failed to save your choice.");
-    }
-  };
+    alert(`✅ You selected: ${selected}`);
+    router.push("/learning-path"); // redirect to learning path
+  } catch (err) {
+    console.error("Error saving career choice:", err);
+    alert("❌ Failed to save your choice.");
+  }
+};
+
 
   if (loading) {
     return (

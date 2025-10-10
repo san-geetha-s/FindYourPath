@@ -14,6 +14,9 @@ export default function WelcomePage() {
 
   // ⏳ Redirect after 5 seconds
   useEffect(() => {
+    // Store name in localStorage so other pages can access
+    localStorage.setItem("studentName", name);
+
     const timer = setTimeout(() => {
       router.push(`/question-bank?name=${encodeURIComponent(name)}`);
     }, 5000);

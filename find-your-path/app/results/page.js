@@ -28,10 +28,17 @@ const categoryNames = {
 export default function ResultsPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [studentName, setStudentName] = useState("Student"); // ✅ Use this instead of user.displayName
   const [scores, setScores] = useState(null);
   const [answers, setAnswers] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("results"); // results | answers
+
+  // Load student name from localStorage
+  useEffect(() => {
+    const storedName = localStorage.getItem("studentName");
+    if (storedName) setStudentName(storedName);
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
@@ -120,8 +127,9 @@ export default function ResultsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
+            {/* ✅ Use studentName from localStorage */}
             <h1 className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-500">
-              Hello, {user?.displayName || user?.phoneNumber}
+              Hello, {studentName}!
             </h1>
             <p className="mb-8 text-gray-300">
               Here’s a summary of your career interest results based on the
