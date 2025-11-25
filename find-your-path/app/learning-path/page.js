@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { auth, db } from "../../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-
+import Loader from "../components/Loader";
 // Motivational Quotes Data
 const motivationalQuotes = [
   "Success is not final, failure is not fatal: It is the courage to continue that counts. – Winston Churchill",
@@ -92,11 +92,14 @@ export default function LearningPathPage() {
       </div>
     );
   if (loading)
-    return (
-      <div className="flex items-center justify-center min-h-screen text-white">
-        Loading resources for {career}...
-      </div>
-    );
+    // return (
+    //   <div className="flex items-center justify-center min-h-screen text-white">
+    //     Loading resources for {career}...
+       
+    //   </div>
+    // );
+    return <Loader/>
+
   if (!resources)
     return (
       <div className="flex items-center justify-center min-h-screen text-white">

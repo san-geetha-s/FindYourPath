@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-
+import Loader from "../components/Loader";
 export default function SoftSkillsPage() {
   const router = useRouter();
 
@@ -120,8 +120,9 @@ export default function SoftSkillsPage() {
   };
 
   if (!career) return <div className="flex items-center justify-center min-h-screen text-white">No career selected.</div>;
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-white">Loading soft skill training...</div>;
-
+  // if (loading) return <div className="flex items-center justify-center min-h-screen text-white">Loading soft skill training...</div>;
+if( loading)
+  return <Loader/>;
   const completedCount = tasks.filter((_, idx) => progress[idx]?.done).length;
 
   return (

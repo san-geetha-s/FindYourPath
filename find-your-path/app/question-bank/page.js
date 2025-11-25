@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { auth, db } from "../../lib/firebase";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-
+import Loader from "../components/Loader";
 // ✅ Your 60 questions (kept as is)
 const questions = {
   R: [
@@ -177,13 +177,16 @@ export default function QuestionBankPage() {
     router.push("/results");
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-black text-white">
-        Loading your progress...
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen bg-black text-white">
+  //       Loading your progress...
+  //     </div>
+  //   );
+  // }
+
+  if (loading) 
+    return <Loader/>;
 
   const start = page * questionsPerPage;
   const currentQuestions = allQuestions.slice(start, start + questionsPerPage);

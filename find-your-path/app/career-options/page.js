@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { auth, db } from "../../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-
+import Loader from "../components/Loader";
 // Career suggestions by category
 const careerSuggestions = {
   R: [
@@ -140,13 +140,16 @@ useEffect(() => {
 };
 
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-black text-white">
-        Loading career options...
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen bg-black text-white">
+  //       Loading career options...
+  //     </div>
+  //   );
+  // }
+
+  if(loading)
+    return <Loader/>
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-black to-gray-900 text-white flex flex-col items-center p-8">

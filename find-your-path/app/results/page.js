@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { auth, db } from "../../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-
+import Loader from "../components/Loader";
 const careerSuggestions = {
   R: ["Engineer", "Technician", "Mechanic", "Farmer", "Architect"],
   I: ["Scientist", "Data Analyst", "Researcher", "Doctor", "Software Developer"],
@@ -80,13 +80,16 @@ export default function ResultsPage() {
     return () => unsub();
   }, [router]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-black text-white">
-        Loading results...
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen bg-black text-white">
+  //       Loading results...
+  //     </div>
+  //   );
+  // }
+
+  if (loading)
+    return <Loader/>;
 
   const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const topTwo = sorted.slice(0, 2);
